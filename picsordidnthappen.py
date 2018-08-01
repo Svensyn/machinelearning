@@ -142,8 +142,8 @@ train_data = process_data(train_data)
 eval_data = process_data(eval_data)
 
 tf.reset_default_graph()
-dataset = tf.data.Dataset.from_tensor_slices((train_data, train_labels))
 
+dataset = tf.data.Dataset.from_tensor_slices((train_data, train_labels))
 dataset = dataset.shuffle(buffer_size=train_labels.shape[0])
 dataset = dataset.batch(batch_size)
 dataset = dataset.repeat()
@@ -151,3 +151,4 @@ dataset_iterator = dataset.make_initializable_iterator()
 next_element = dataset_iterator.get_next()
 
 cnn = ConvNet(image_height, image_width, color_channels, 10)
+print(train_data.shape)
