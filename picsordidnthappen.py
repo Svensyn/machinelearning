@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 #Learning  Network
 class ConvNet:
@@ -18,15 +19,15 @@ class ConvNet:
 
         #2nd set of layers
 
-        conv_layer_2 = tf.layers.conv2d(pooling_layer_1, filters=64, kernel_size=[5, 5], padding="same", activation=tf.nn.relu)
+        """conv_layer_2 = tf.layers.conv2d(pooling_layer_1, filters=64, kernel_size=[5, 5], padding="same", activation=tf.nn.relu)
         print (conv_layer_2.shape)
 
         pooling_layer_2 = tf.layers.max_pooling2d(conv_layer_2, pool_size=[2,2], strides=2)
-        print(pooling_layer_2.shape)
+        print(pooling_layer_2.shape)"""
 
         #Flattens Layers
 
-        flattened_pooling = tf.layers.flatten(pooling_layer_2)
+        flattened_pooling = tf.layers.flatten(pooling_layer_1)
 
         #Adds Last Neurons
 
@@ -41,26 +42,29 @@ class ConvNet:
 
         outputs = tf.layers.dense(dropout, num_classes)
         print(outputs.shape)
-
+        #last print message
         #Choosing
 
         self.choice = tf.argmax(outputs, axis=1)
         self.probabilities = tf.nn.softmax(outputs)
-
+        print("e1")
         #Labeling
 
         self.labels = tf.placeholder(dtype = tf.float32, name= "labels")
         self.accuracy, self.accuracy_op =  tf.metrics.accuracy(self.labels,self.choice)
+        print("e2")
 
         #Is this loss?
 
         one_hot_labels = tf.one_hot(indices=tf.cast(self.labels, dtype=tf.int32), depth=num_classes)
         self.loss = tf.losses.softmax_cross_entropy(onehot_labels= one_hot_labels, logits= outputs)
+        print("e3")
 
         #Optimizer
 
         optimizer = tf.train.GradientDescentOptimizer(learning_rate= 1e-2)
-        self_train_operation = optimizer.minimize(loss = self.loss, global_step = tf.train.get_global_step())
+        self.train_operation = optimizer.minimize(loss = self.loss, global_step = tf.train.get_global_step())
+        print("e4")
 
 
 
@@ -69,7 +73,7 @@ class ConvNet:
 
 
 #Variables
-training_steps = 20000
+training_steps = 5000
 batch_size = 64
 model_name = "cifar"
 path = "./" + model_name + "-cnn/"
@@ -113,7 +117,7 @@ train_data = np.array([])
 train_labels = np.array([])
 
 # Load all the data batches.
-for i in range(1, 6):
+for i in range(1, 4):
     data_batch = unpickle(cifar_path + 'data_batch_' + str(i))
     train_data = np.append(train_data, data_batch[b'data'])
     train_labels = np.append(train_labels, data_batch[b'labels'])
@@ -151,4 +155,52 @@ dataset_iterator = dataset.make_initializable_iterator()
 next_element = dataset_iterator.get_next()
 
 cnn = ConvNet(image_height, image_width, color_channels, 10)
-print(train_data.shape)
+
+saver = tf.train.Saver(max_to_keep=2)
+print("e5")
+
+if not os.path.exists(path):
+    os.makedirs(path)
+
+#running the session
+
+with tf.Session() as sess:
+    print("e6")
+    if load_checkpoint:
+        checkpoint = tf.train.get_checkpoint_state(path)
+        saver.restore(sess, checkpoint.model_checkpoint_path)
+        print("e7")
+    else:
+        print("e8")
+        sess.run(tf.global_variables_initializer())
+        print("e9")
+
+    print("e10")
+
+    sess.run(tf.local_variables_initializer())
+    sess.run(dataset_iterator.initializer)
+
+    #training loop
+
+    for step in range(training_steps):
+        current_batch = sess.run(next_element)
+
+        batch_inputs = current_batch[0]
+        batch_labels = current_batch[1]
+
+        sess.run((cnn.train_operation, cnn.accuracy_op), feed_dict={cnn.input_layer: batch_inputs, cnn.labels: batch_labels})
+
+        #runs every 1000 steps
+        if step % 1000 == 0 and step > 0:
+            current_acc = sess.run(cnn.accuracy)
+
+            print("Accuracy at step " + str(step) + ": " + str(current_acc))
+            print("Saving checkpoint")
+            #saver.save(sess, path + model_name, step)
+
+        print("Saving final checkpoint for training session.")
+        #saver.save(sess, path + model_name, step) #problem line
+        print("e11")
+
+
+#(train_data.shape)
